@@ -1,0 +1,85 @@
+<# --------------------print_unused_files----------------------------
+Starting in the present folder, program checks the last access date of all the files and prints out any files that have not been accessed in
+a number of days greater than the input number.
+
+The function is then run again for any subfolders.
+
+Parameters: 
+	$acceptable
+		The number of days at which a file is considered "recent" and is not zipped.
+	$PATH
+		The full path to the starting folder from which to run the function
+
+#>
+function print_unused_files {
+	param($acceptable, [Parameter(Mandatory=$true)][string]$PATH)
+	Get-ChildItem $PATH |
+		Foreach-Object{ 
+			$lastAccess = $_.lastaccesstime
+			$acceptableTimespan = new-timespan -days $acceptable
+			if (Test-Path -Path $_.FullName -PathType Container){
+				$name = $_.FullName
+				print_unused_files $acceptable "$name"
+			}
+			elseif (((get-date) - $lastAccess) -gt $acceptableTimespan) {
+				Write-Output "------------------------------------------------------------------------------------"
+				Write-Output "File Found: "
+				Write-Output $_.FullName
+				Write-Output ""
+				Write-Output "Days Since Last Access: "
+				Write-Output ((get-date) - $lastAccess).Days
+				Write-Output "------------------------------------------------------------------------------------"
+				Write-Output ""
+			}
+		}
+}
+
+
+
+<# --------------------zip_unused_files----------------------------
+Starting in the present folder, program checks the last access date of all the files and prints out any files that have not been accessed in
+a number of days greater than the input number. Once the file is printed the program creates a zip folder of the file then deletes the unzipped version.
+
+The function is then run again for any subfolders.
+
+Parameters: 
+	$acceptable
+		The number of days at which a file is considered "recent" and is not zipped.
+	$PATH
+		The full path to the starting folder from which to run the function
+
+#>
+function zip_unused_files {
+	param($acceptable, [Parameter(Mandatory=$true)][string]$PATH)
+	Get-ChildItem $PATH |
+		Foreach-Object{ 
+			$lastAccess = $_.lastaccesstime
+			$acceptableTimespan = new-timespan -days $acceptable
+			if (Test-Path -Path $_.FullName -PathType Container){
+				$name = $_.FullName
+				zip_unused_files $acceptable "$name"
+			}
+			elseif (((get-date) - $lastAccess) -gt $acceptableTimespan) {
+				Write-Output "------------------------------------------------------------------------------------"
+				Write-Output "File Found: "
+				Write-Output $_.FullName
+				Write-Output ""
+				Write-Output "Days Since Last Access: "
+				Write-Output ((get-date) - $lastAccess).Days
+				Write-Output "------------------------------------------------------------------------------------"
+				Write-Output ""
+				$zip_dest = $_.FullName + ".zip"
+				Compress-Archive -LiteralPath $_.FullName -DestinationPath $zip_dest
+				Remove-Item $_.FullName
+			}
+		}
+}
+
+
+<# --------------------------Example Calls for the Functions------------------------------
+In these examples any file in Bob's user account which has not been accessed in the past 30 days is printed out, a zipped copy is created
+and the non-zipped copy is deleted.
+#>
+
+print_unused_files 30 "C:\Users\Bob"
+zip_unused_files 30 "C:\Users\Bob"
